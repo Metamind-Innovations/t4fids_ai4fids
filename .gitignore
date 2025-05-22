@@ -173,14 +173,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-models/
-data/
-results/
 =======
-__pycache__
-data
-models
-results
-.env
-.vscode/
 >>>>>>> 3b53682 (Initial commit)
