@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -175,3 +176,11 @@ cython_debug/
 models/
 data/
 results/
+=======
+__pycache__
+data
+models
+results
+.env
+.vscode/
+>>>>>>> 3b53682 (Initial commit)

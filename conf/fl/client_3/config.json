@@ -1,0 +1,11 @@
+{
+    "data_path": "data/training/client_3",
+    "server_address": "127.0.0.1",
+    "server_port": "8080",
+    "model_save_path": "models/client_3",
+    "results_save_path": "results/client_3",
+    "learning_rate": 0.002,
+    "resample_flag": false,
+    "features_to_drop": ["flow_id","src_ip","dst_ip","src_port", "dst_port"],
+    "label_keyword": "label"
+}
