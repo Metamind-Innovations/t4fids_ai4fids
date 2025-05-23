@@ -7,10 +7,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY t4fids/server /app/server
-COPY t4fids/common /app/common
+COPY t4fids/server /app/t4fids/server
+COPY t4fids/common /app/t4fids/common
 COPY scripts/run_server.py /app/run_server.py
 
 EXPOSE 8080
 
-ENTRYPOINT ["python", "run_server.py"]
+CMD ["python", "run_server.py", "--config", "config.json"]
