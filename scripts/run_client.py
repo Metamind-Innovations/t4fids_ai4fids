@@ -18,6 +18,7 @@ def main():
     # Parser: takes only config file path
     parser = argparse.ArgumentParser(description='Federated learning client')
     parser.add_argument('--config', 
+                        default='conf/client/config.json',
                         type=str, 
                         help='Path to the configuration file of the client'
                         )
