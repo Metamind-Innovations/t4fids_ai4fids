@@ -22,12 +22,13 @@ This repository contains T4FIDS, which performs real federated training that can
 
 ## Dataset setup
 
-Place the train and test sets in the ```data/``` directory as ```train.csv``` and ```test.csv```, respectively.
+Place the train and test sets that the client will use in the ```data/``` directory as ```train.csv``` and ```test.csv```, respectively.
 <pre>
 ├── data/
 │   ├── train.csv
 │   ├── test.csv
 </pre> 
+
 
 ## Configuration
 
@@ -84,13 +85,13 @@ python -m  scripts.run_client
 To run the server (with the deafult configuration file in the respective path), execute:
 
 ```shell
-python -m scripts.run_server.py
+python -m scripts.run_server
 ```
 
 You can also configure the server via CLI, as per the following example:
 
 ```shell
-python -m scripts.run_server.py --num_rounds 50 --batch_size 64 --strategy 'FedAdam'
+python -m scripts.run_server --num_rounds 50 --batch_size 64 --strategy 'FedAdam'
 ```
 
 To run the experiment successfully, the server and at least three client instances must be launched on separate devices, either physical or virtual.
