@@ -78,19 +78,19 @@ while an example for the server is:
 To run the client (with the deafult configuration file in the respective path), execute:
 
 ```shell
-python run_client.py
+python -m  scripts.run_client
 ```
 
 To run the server (with the deafult configuration file in the respective path), execute:
 
 ```shell
-python run_server.py
+python -m scripts.run_server.py
 ```
 
 You can also configure the server via CLI, as per the following example:
 
 ```shell
-python run_server.py --num_rounds 50 --batch_size 64 --strategy 'FedAdam'
+python -m scripts.run_server.py --num_rounds 50 --batch_size 64 --strategy 'FedAdam'
 ```
 
 To run the experiment successfully, the server and at least three client instances must be launched on separate devices, either physical or virtual.
@@ -108,4 +108,4 @@ After succesfully running the experiments you should see the global model, scale
 
 A suffix with the timestamp also appears in the name of the above artifacts. 
 
-Finally, some training results with key evaluaiton metrics will appear in ```results/``` as ```metrics.json```.
+Finally, some training results with key evaluation metrics will appear in ```results/``` as ```metrics.json```.
