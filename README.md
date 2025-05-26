@@ -23,28 +23,28 @@ This repository contains T4FIDS, which performs real federated training that can
 ## Dataset setup
 
 Place the train and test sets that the client will use in the ```data/``` directory as ```train.csv``` and ```test.csv```, respectively.
-<pre>
+```
 ├── data/
 │   ├── train.csv
 │   ├── test.csv
-</pre> 
+```
 
 
 ## Configuration
 
 The client and server configuration files should be located at:
 
-<pre>
+```
 ├── conf/
 │   ├── client/
         ├── config.json
 │   ├── server/
         ├── config.json
-</pre> 
+```
 
 A client configuration example comes as follows:
 
-<pre>
+```json
 {
     "data_path": "data",
     "server_address": "127.0.0.1",
@@ -56,11 +56,11 @@ A client configuration example comes as follows:
     "features_to_drop": ["flow_id","src_ip","dst_ip","src_port", "dst_port"],
     "label_keyword": "label"
 }
-</pre> 
+```
 
 while an example for the server is:
 
-<pre>
+```json
 {
     "server_address": "0.0.0.0",
     "server_port": "8080",
@@ -72,7 +72,7 @@ while an example for the server is:
     "num_classes": 5,
     "strategy": "FedAvg"
 }
-</pre>
+```
 
 ## Execution
 
@@ -100,13 +100,57 @@ To run the experiment successfully, the server and at least three client instanc
 
 After succesfully running the experiments you should see the global model, scaler, and label encoder, under the ```models/``` directory as:
 
-<pre>
+```
 ├── models/
 │   ├── model.h5
 │   ├── scaler.joblib
-    ├── label_encoder.joblib
-</pre> 
+│   ├── label_encoder.joblib
+```
 
 A suffix with the timestamp also appears in the name of the above artifacts. 
 
 Finally, some training results with key evaluation metrics will appear in ```results/``` as ```metrics.json```.
+
+## Run with Docker
+
+To build the docker image of the client, run from the top-level directory
+
+```shell
+docker build -t t4fids-client -f docker/client/Dockerfile .
+```
+Similarly, to build the server's docker image, simply execute
+```shell
+docker build -t t4fids-server -f docker/server/Dockerfile .
+```
+Before running the client as a Docker container, you should create the following directory structure:
+
+```
+client/
+├── config.json 
+├── data/
+│   ├── train.csv
+│   ├── test.csv            
+├── models/           
+└── results/ 
+```
+This structure is required to enable volume mounting during container execution. Finally, you can run the client Docker container as follows:
+
+```shell
+docker run --rm \
+  -v $(pwd)/client/config.json:/app/config.json \
+  -v $(pwd)/client/data:/app/data \
+  -v $(pwd)/client/models:/app/models \
+  -v $(pwd)/client/results:/app/results \
+  --name client \
+  t4fids-client
+```
+Before running the server Docker image, create the ```server/``` directory and locate the server's configuration file, as ```config.json```. To run the server Docker container, execute:
+```shell
+PORT=$(jq -r '.server_port' server/config.json)    # Use a variable for port
+
+docker run --rm \
+  --name server \
+  -v $(pwd)/server/config.json:/app/config.json \
+  -p ${PORT}:${PORT} \
+  t4fids-server
+```
