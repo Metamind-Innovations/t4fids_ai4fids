@@ -20,7 +20,6 @@ jobs:
       id: owner-lower
       run: echo "owner_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
-    steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
