@@ -1,0 +1,24 @@
+{
+    "data_path": "data",
+    "server_address": "127.0.0.1",
+    "server_port": "8080",
+    "model_save_path": "models",
+    "results_save_path": "results",
+    "learning_rate": 0.002,
+    "resample_flag": false,
+    "features_to_drop": [
+        "ts",
+        "PID",
+        "CMD",
+        "label",
+        "type"
+    ],
+    "label_keyword": "label",
+    "opt": {
+        "optimizer": "RMSprop",
+        "params": {
+            "rho": 0.9,
+            "momentum": 0.0
+        }
+    }
+}
