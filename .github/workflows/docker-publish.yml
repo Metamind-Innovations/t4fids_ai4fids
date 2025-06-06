@@ -12,6 +12,13 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    env:
+      OWNER_LOWER: ${{ github.repository_owner }}
+
+    steps:
+    - name: Set lowercase owner
+      id: owner-lower
+      run: echo "owner_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
     steps:
     - name: Checkout repository
@@ -30,7 +37,7 @@ jobs:
         context: .
         file: ./docker/client/Dockerfile
         push: true
-        tags: ghcr.io/${{ github.repository_owner }}/t4fids-client:latest
+        tags: ghcr.io/${{ steps.owner-lower.outputs.owner_lower }}/t4fids-client:latest
 
     - name: Build and push server image
       uses: docker/build-push-action@v4
@@ -38,4 +45,4 @@ jobs:
         context: .
         file: ./docker/server/Dockerfile
         push: true
-        tags: ghcr.io/${{ github.repository_owner }}/t4fids-server:latest
+        tags: ghcr.io/${{ steps.owner-lower.outputs.owner_lower }}/t4fids-server:latest
