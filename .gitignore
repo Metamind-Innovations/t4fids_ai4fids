@@ -173,6 +173,12 @@ cython_debug/
 
 # Other
 tmp/
+models/*
+!models/.gitkeep
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
 # PyPI configuration file
 .pypirc
 =======
