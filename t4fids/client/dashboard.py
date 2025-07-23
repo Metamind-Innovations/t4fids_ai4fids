@@ -5,6 +5,7 @@ import time
 import pandas as pd
 import subprocess
 import tensorflow as tf
+from pathlib import Path
 
 def wait_for_path(path, check_interval=0.2):
     while not os.path.exists(path):
@@ -31,7 +32,7 @@ def display_metrics(metrics_path):
         subcol4.metric("F1 Score", f"{metrics[3]:.2f}%")
 
 def get_feature_lst(path, label_kw):
-    data = pd.read_csv(path + '/train.csv')
+    data = pd.read_csv(path)
     data = data.drop([label_kw], axis=1)
     cols = list(data.columns)
     return cols
@@ -135,7 +136,10 @@ with ins_tab:
 
 # Reset the acc.json
 TMP_SAVE_PATH = 'tmp/streamlit'
-remove_file('acc.json')
+ACC_FILE_PATH = Path(TMP_SAVE_PATH) / 'acc.json'
+METRICS_FILE_PATH = Path(TMP_SAVE_PATH) / 'metrics.json'
+AUX_FILE_PATH = Path(TMP_SAVE_PATH) / 'aux_config.json'
+remove_file(ACC_FILE_PATH)
 
 # Sidebar
 sidebar = st.sidebar
@@ -201,9 +205,8 @@ with sidebar:
                     with open(CONFIG_PATH, 'w') as config_file:
                         json.dump(config, config_file, indent=4)
                     
-                    # Start a new thread for running the client script
-                    #threading.Thread(target=lambda: os.system(f'python client_streamlit.py {config_path}')).start()
-                    subprocess.Popen(['python', 'client_streamlit.py', CONFIG_PATH])
+                    # Start a new process for running the client script
+                    subprocess.Popen(['python', '-m', 'scripts.run_client', '--client_type', 'streamlit'])
 
             with tab_opt:
                 optimizer_name = st.selectbox("Select an Optimizer", 
@@ -230,7 +233,7 @@ with sidebar:
                     features_drop = st.multiselect("Select which features to remove:", 
                                                    cols, placeholder='Choose a feature', 
                                                    disabled=st.session_state.disable_run)
-                    drop_list = features_to_drop
+                    drop_list = features_drop
                     config['features_to_drop'] = drop_list
 
                 elif is_option_features and not os.path.exists(path_data):
@@ -248,8 +251,8 @@ with sidebar:
                 else:
                     config['resample_flag'] = False
 
-                with open(CONFIG_PATH, 'w') as config_file:
-                    json.dump(config, config_file, indent=4)
+                with open(CONFIG_PATH, 'w') as f:
+                    json.dump(config, f, indent=4)
 
     st.markdown("""
         <hr>
@@ -266,7 +269,7 @@ with st.container(border=True):
 
         # Waiting spinner
         with st.spinner('Connecting to the server...'):
-            wait_for_path('acc.json')
+            wait_for_path(ACC_FILE_PATH)
         st.rerun()
     elif 'acc' not in st.session_state and not st.session_state.disable_run:
         st.info('Evaluation will start upon connection to the server.', icon='ℹ️')
@@ -275,10 +278,10 @@ with st.container(border=True):
     acc = []
     bar = st.empty()
     while True:
-        if os.path.exists('acc.json'):
-            with open('acc.json', 'r') as file:
+        if os.path.exists(ACC_FILE_PATH):
+            with open(ACC_FILE_PATH, 'r') as file:
                 acc = json.load(file)
-            with open('aux_config.json', 'r') as f:
+            with open(AUX_FILE_PATH, 'r') as f:
                 aux_config = json.load(f)
             rounds = list(range(1, len(acc) + 1))
             st.session_state.acc = acc
@@ -316,8 +319,8 @@ with st.container(border=True):
     
     st.success("✅ FL training has been succesfully completed.")
     metrics_enabled = st.toggle("See evaluation metrics")
-    with open('metrics.json', 'r') as f:
+    with open(METRICS_FILE_PATH, 'r') as f:
         metrics = json.load(f)
     metrics = tuple(m*100 for m in metrics)
     if metrics_enabled:
-        display_metrics('metrics.json')
+        display_metrics(METRICS_FILE_PATH)

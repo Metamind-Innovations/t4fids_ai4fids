@@ -1,10 +1,10 @@
 {
     "server_address": "127.0.0.1",
     "server_port": "8080",
-    "num_rounds": 20,
+    "num_rounds": 30,
     "num_clients": 3,
     "batch_size": 32,
-    "local_epochs": 1,
+    "local_epochs": 5,
     "input_shape": 49,
     "num_classes": 5,
     "strategy": "FedAvg"

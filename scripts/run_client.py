@@ -22,6 +22,11 @@ def main():
                         type=str, 
                         help='Path to the configuration file of the client'
                         )
+    parser.add_argument('--client_type', 
+                    default='normal',
+                    type=str, 
+                    help='Path to the configuration file of the client'
+                    )
     args = parser.parse_args()
     config = load_config(args.config)
     logger.info(f"Client configuration is: \n {config}")
@@ -34,7 +39,8 @@ def main():
                         config['features_to_drop'],
                         config['label_keyword'],
                         config['learning_rate'],
-                        config['resample_flag']
+                        config['resample_flag'],
+                        args.client_type
     )
     
     # Start client

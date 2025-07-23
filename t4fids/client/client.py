@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from ..common.model import get_model
-from .utils import evaluation_metrics
+from .utils import evaluation_metrics, load_data
 import flwr as fl
 import numpy as np
 import tensorflow as tf
@@ -9,7 +9,6 @@ from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import time
 import joblib
-from .utils import load_data
 from .constants import TrainingArtifacts
 import json
 
@@ -214,25 +213,83 @@ class Client(fl.client.NumPyClient):
 
         logger.info(f"Results saved to {save_dir}.")
 
+
+class StreamlitClient(Client):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.ACC_FILE_PATH = 'tmp/streamlit/acc.json'
+        self.METRICS_FILE_PATH = 'tmp/streamlit/metrics.json'
+        self.AUX_FILE_PATH = 'tmp/streamlit/aux_config.json'
+        self.acc_lst = []
+
+    def evaluate(self, parameters, config):
+        try:
+            self.model.set_weights(parameters)
+            current_round = config['current_round']
+            logger.info(f'Evaluation of the global model at round {current_round}')
+
+            loss, accuracy = self.model.evaluate(self.X_test, self.y_test)
+            predicted_test = self.model.predict(self.X_test)
+            predicted_classes = np.argmax(predicted_test,axis=1)
+            eval_metrics = evaluation_metrics(self.y_test, predicted_classes)
+            
+            logger.info(
+                f"Evaluation metrics are: \nACC: {eval_metrics[0]} \nTPR: {eval_metrics[1]}"
+                f"\nFPR: {eval_metrics[2]}, \nF1 score: {eval_metrics[3]} \n"
+            )
+
+            # A list of tuples: (accuracy, TPR, FPR, f1). Saved for future use
+            self.eval_metrics_lst.append(eval_metrics)
+            self.acc_lst.append(eval_metrics[0])
+
+            if config['current_round']==1:
+                with open(self.AUX_FILE_PATH, 'w') as f:
+                    json.dump(config, f)
+                
+            with open(self.ACC_FILE_PATH, 'w') as f:
+                 json.dump(self.acc_lst, f)
+                 
+            if config['current_round']==config['total_rounds']:
+                with open(self.METRICS_FILE_PATH, 'w') as f:
+                    json.dump(eval_metrics, f)
+            
+            return loss, len(self.X_test), {"accuracy": accuracy}
+        except Exception as e:
+            logger.error(f"Evaluation failed: {str(e)}")
+            raise
+
 def gen_client(data_path,
                features_to_drop,
                label_keyword,
                lr=0.002,
-               resample_flag=False
-               ) -> Client:
+               resample_flag=False,
+               client_type = 'normal'
+               ):
     ''' Generate and return client instance'''
     try:
 
         # Load data
         train_data, test_data = load_data(data_path)
 
-        client = Client(train_data,
-                        test_data,
-                        features_to_drop,
-                        label_keyword,
-                        lr,
-                        resample_flag
-               )
+        if client_type=='normal':
+            client = Client(train_data,
+                            test_data,
+                            features_to_drop,
+                            label_keyword,
+                            lr,
+                            resample_flag
+                )
+        else:
+            client = StreamlitClient(train_data,
+                test_data,
+                features_to_drop,
+                label_keyword,
+                lr,
+                resample_flag
+                )
+            
         logger.info('Client instance has been generated.')
     except Exception as e:
         logger.error(f"Failed to generate client instance: {e}")
