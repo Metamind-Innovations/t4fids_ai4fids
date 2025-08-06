@@ -46,15 +46,41 @@ A client configuration example comes as follows:
 
 ```json
 {
-    "data_path": "data",
-    "server_address": "127.0.0.1",
-    "server_port": "8080",
-    "model_save_path": "models",
-    "results_save_path": "results",
-    "learning_rate": 0.002,
-    "resample_flag": false,
-    "features_to_drop": ["flow_id","src_ip","dst_ip","src_port", "dst_port"],
-    "label_keyword": "label"
+    "paths": {
+        "data": "data",                  // Directory where training/evaluation data is stored
+        "model_save": "models",           // Directory where trained models will be saved
+        "results_save": "results"         // Directory for saving training results/metrics
+    },
+    "server": {
+        "address": "127.0.0.1",          // IP address of the server to connect to
+        "port": "8080"                   // Port number for server communication
+    },
+    "tr_params": {                       // Training parameters
+        "learning_rate": 0.1,            // Initial learning rate for the optimizer
+        "batch_size": 64,                // Number of samples per training batch
+        "local_epochs": 5                // Number of training epochs to run locally before communicating with server
+    },
+    "data_kw": {                         // Data processing parameters
+        "features_to_drop": [            // List of feature columns to remove from dataset
+            "flow_id",
+            "ip_src",
+            "ip_dst",
+            "udp_sport",
+            "udp_dport"
+        ],
+        "label_keyword": "label"         // Column name containing the label keyword (to be dropped)
+    },
+    "misc": {
+        "override_params": false,        // Whether to override existing model parameters with server's ones
+        "resample_flag": false          // Whether to resample/balance the dataset before training
+    },
+    "opt": {                            // Optimizer configuration
+        "optimizer": "RMSprop",         // Optimizer type (options: SGD, Adam, RMSprop, etc.)
+        "params": {                     // Optimizer-specific parameters
+            "rho": 0.9,                 // RMSprop discounting factor for gradient history
+            "momentum": 0.0             // Momentum factor (if supported by optimizer)
+        }
+    }
 }
 ```
 
@@ -110,6 +136,13 @@ After succesfully running the experiments you should see the global model, scale
 A suffix with the timestamp also appears in the name of the above artifacts. 
 
 Finally, some training results with key evaluation metrics will appear in ```results/``` as ```metrics.json```.
+
+## Execution with dashboard
+To use the client dashboard as an interface for training, execute from top-level directory:
+```shell
+streamlit run t4fids/client/dashboard.py
+```
+You will then view the client app in the browser by using the relevant URL that appears.
 
 ## Run with Docker
 
