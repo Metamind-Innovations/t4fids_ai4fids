@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from ..common.model import get_model
-from .utils import evaluation_metrics
+from .utils import evaluation_metrics, load_data
 import flwr as fl
 import numpy as np
 import tensorflow as tf
@@ -9,9 +9,11 @@ from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import time
 import joblib
-from .utils import load_data
-from .constants import TrainingArtifacts
+from .constants import TrainingArtifacts, TrainingParameters
 import json
+from typing import Union, Dict, List
+from pandas import DataFrame
+import os
 
 # Configure logging before other imports
 logger = logging.getLogger(__name__)
@@ -19,20 +21,22 @@ logger = logging.getLogger(__name__)
 class Client(fl.client.NumPyClient):
     '''FL Client core class'''
     def __init__(self, 
-                 train_data,
-                 test_data,
-                 features_to_drop:str,
-                 label_keyword: str,
-                 learning_rate: float,
-                 resample_flag: bool
+                 train_data: DataFrame,
+                 test_data: DataFrame,
+                 data_kw: Dict[str, Union[List[str], str]],
+                 tr_params: TrainingParameters,
+                 misc: Dict[str, bool]
         ):
 
         self.train_data = train_data
         self.test_data = test_data
-        self.features_to_drop = features_to_drop
-        self.label_keyword = label_keyword
-        self.lr = learning_rate
-        self.resample_flag = resample_flag
+        self.features_to_drop = data_kw['features_to_drop']
+        self.label_keyword = data_kw['label_keyword']
+        self.lr = tr_params.lr
+        self.batch_size = tr_params.batch_size
+        self.local_epochs = tr_params.local_epochs
+        self.resample_flag = misc['resample_flag']
+        self.is_override = misc['override_params']
 
         self._preprocess_data()
         self._initialize()
@@ -128,7 +132,9 @@ class Client(fl.client.NumPyClient):
     def fit(self, parameters, config):
         try:
             current_round = config['current_round']
-            self.epochs = config['local_epochs']
+            if self.is_override:
+                self.local_epochs = config['local_epochs']
+                self.batch_size = config['batch_size']
             self.model.set_weights(parameters)
 
             # training steps
@@ -136,8 +142,8 @@ class Client(fl.client.NumPyClient):
             self.model.fit(
                 self.X_train, 
                 self.y_train, 
-                epochs=self.epochs, 
-                batch_size=config['batch_size']
+                epochs=self.local_epochs, 
+                batch_size=self.batch_size
             )
             return self.model.get_weights(), len(self.y_train), {}
         except Exception as e:
@@ -180,6 +186,7 @@ class Client(fl.client.NumPyClient):
             suffix = 'v1'
 
         save_dir = Path(model_save_path)
+        os.makedirs(save_dir, exist_ok=True)
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         
         # Model
@@ -208,31 +215,90 @@ class Client(fl.client.NumPyClient):
 
         # Save to JSON file
         save_dir = Path(results_save_path)
+        os.makedirs(save_dir, exist_ok=True)
         save_path = save_dir / "metrics.json"
         with open(save_path, "w") as f:
             json.dump(data, f, indent=4)
 
         logger.info(f"Results saved to {save_dir}.")
 
-def gen_client(data_path,
-               features_to_drop,
-               label_keyword,
-               lr=0.002,
-               resample_flag=False
-               ) -> Client:
+
+class StreamlitClient(Client):
+
+    '''Client for streamlit dashboard. Only difference with default client is saving some tmp metrics
+    for the dashboard.
+    '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.ACC_FILE_PATH = 'tmp/streamlit/acc.json'
+        self.METRICS_FILE_PATH = 'tmp/streamlit/metrics.json'
+        self.AUX_FILE_PATH = 'tmp/streamlit/aux_config.json'
+        self.acc_lst = []
+
+    def evaluate(self, parameters, config):
+        try:
+            self.model.set_weights(parameters)
+            current_round = config['current_round']
+            logger.info(f'Evaluation of the global model at round {current_round}')
+
+            loss, accuracy = self.model.evaluate(self.X_test, self.y_test)
+            predicted_test = self.model.predict(self.X_test)
+            predicted_classes = np.argmax(predicted_test,axis=1)
+            eval_metrics = evaluation_metrics(self.y_test, predicted_classes)
+            
+            logger.info(
+                f"Evaluation metrics are: \nACC: {eval_metrics[0]} \nTPR: {eval_metrics[1]}"
+                f"\nFPR: {eval_metrics[2]}, \nF1 score: {eval_metrics[3]} \n"
+            )
+
+            # A list of tuples: (accuracy, TPR, FPR, f1). Saved for future use
+            self.eval_metrics_lst.append(eval_metrics)
+            self.acc_lst.append(eval_metrics[0])
+
+            if config['current_round']==1:
+                with open(self.AUX_FILE_PATH, 'w') as f:
+                    json.dump(config, f)
+                
+            with open(self.ACC_FILE_PATH, 'w') as f:
+                 json.dump(self.acc_lst, f)
+                 
+            if config['current_round']==config['total_rounds']:
+                with open(self.METRICS_FILE_PATH, 'w') as f:
+                    json.dump(eval_metrics, f)
+            
+            return loss, len(self.X_test), {"accuracy": accuracy}
+        except Exception as e:
+            logger.error(f"Evaluation failed: {str(e)}")
+            raise
+
+def gen_client(data_path: str,
+               data_kw: Dict[str, Union[List[str], str]],
+               tr_params: TrainingParameters,
+               misc: Dict[str, bool],
+               client_type = 'normal'
+               ) -> Union[Client,StreamlitClient]:
     ''' Generate and return client instance'''
     try:
 
         # Load data
         train_data, test_data = load_data(data_path)
 
-        client = Client(train_data,
-                        test_data,
-                        features_to_drop,
-                        label_keyword,
-                        lr,
-                        resample_flag
-               )
+        if client_type=='normal':
+            client = Client(train_data,
+                            test_data,
+                            data_kw,
+                            tr_params,
+                            misc
+                )
+        else:
+            client = StreamlitClient(train_data,
+                test_data,
+                data_kw,
+                tr_params,
+                misc
+                )
+            
         logger.info('Client instance has been generated.')
     except Exception as e:
         logger.error(f"Failed to generate client instance: {e}")

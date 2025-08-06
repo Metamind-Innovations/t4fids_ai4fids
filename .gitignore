@@ -171,6 +171,15 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Other
+tmp/
+models/*
+test/
+!models/.gitkeep
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
 # PyPI configuration file
 .pypirc
 =======

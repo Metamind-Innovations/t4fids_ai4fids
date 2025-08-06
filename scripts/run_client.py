@@ -2,6 +2,7 @@ import argparse
 import flwr as fl
 import tensorflow as tf
 from t4fids.client.client import gen_client
+from t4fids.client.constants import TrainingParameters
 import logging
 import json
 
@@ -22,6 +23,11 @@ def main():
                         type=str, 
                         help='Path to the configuration file of the client'
                         )
+    parser.add_argument('--client_type', 
+                    default='normal',
+                    type=str, 
+                    help='Path to the configuration file of the client'
+                    )
     args = parser.parse_args()
     config = load_config(args.config)
     logger.info(f"Client configuration is: \n {config}")
@@ -29,24 +35,29 @@ def main():
     # (Optional): force TensorFlow to use the CPU only
     tf.config.set_visible_devices([], 'GPU')
     
+    tr_params = TrainingParameters(config['tr_params']['learning_rate'],
+                                   config['tr_params']['batch_size'],
+                                   config['tr_params']['local_epochs']
+    )
+
     # Generate client instance
-    client = gen_client(config['data_path'],
-                        config['features_to_drop'],
-                        config['label_keyword'],
-                        config['learning_rate'],
-                        config['resample_flag']
+    client = gen_client(config['paths']['data'],
+                        config['data_kw'],
+                        tr_params,
+                        config['misc'],
+                        args.client_type
     )
     
     # Start client
-    server_address = f"{config['server_address']}:{config['server_port']}"
+    server_address = f"{config['server']['address']}:{config['server']['port']}"
     fl.client.start_numpy_client(
         server_address=server_address,
         client=client,
     )
 
     # Save artifacts
-    client.save_artifacts(config['model_save_path'])
-    client.save_results(config['results_save_path'])
+    client.save_artifacts(config['paths']['model_save'])
+    client.save_results(config['paths']['results_save'])
 
 if __name__ == "__main__":
     main()
