@@ -45,7 +45,7 @@ The client and server configuration files should be located at:
 A client configuration example comes as follows:
 
 ```json
-DEFAULT_DASH_CONF = {
+{
     "paths": {
         "data": "data",
         "model_save": "models",
