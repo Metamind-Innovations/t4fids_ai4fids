@@ -32,7 +32,7 @@ def display_metrics(metrics_path):
         subcol4.metric("F1 Score", f"{metrics[3]:.2f}%")
 
 def get_feature_lst(path, label_kw):
-    data = pd.read_csv(path)
+    data = pd.read_csv(Path(path) / 'train.csv')
     data = data.drop([label_kw], axis=1)
     cols = list(data.columns)
     return cols
@@ -177,6 +177,20 @@ with sidebar:
                                  disabled=st.session_state.disable_run
                                  )
             
+            batch_size = st.number_input("Batch Size:", 
+                                 min_value=1, 
+                                 value=32, step=2, 
+                                 help="Insert value of batch size", 
+                                 disabled=st.session_state.disable_run
+                                 )
+            
+            local_epochs = st.number_input("Local Epochs:", 
+                                 min_value=1, max_value=20,
+                                 value=5, step=1, 
+                                 help="Insert value of local epochs", 
+                                 disabled=st.session_state.disable_run
+                                 )
+            
             # Start training button
             start = st.button('Start Training', disabled=st.session_state.disable_run)
 
@@ -196,17 +210,22 @@ with sidebar:
                     st.session_state.disable_run = True
 
                     # modify config file
-                    config['learning_rate'] = lr
-                    config['server_address'] = addr
-                    config['server_port'] = port
-                    config['dataset_path'] = path_data
+                    config['tr_params']['learning_rate'] = lr
+                    config['tr_params']['batch_size'] = batch_size
+                    config['tr_params']['local_epochs'] = local_epochs
+                    config['server']['address'] = addr
+                    config['server']['port'] = port
+                    config['paths']['data'] = path_data
                     
                     # Save configuration to a file
-                    with open(CONFIG_PATH, 'w') as config_file:
-                        json.dump(config, config_file, indent=4)
+                    with open(CONFIG_PATH, 'w') as f:
+                        json.dump(config, f, indent=4)
                     
                     # Start a new process for running the client script
-                    subprocess.Popen(['python', '-m', 'scripts.run_client', '--client_type', 'streamlit'])
+                    subprocess.Popen(['python', '-m', 'scripts.run_client', 
+                                      '--client_type', 'streamlit', 
+                                      '--config', 'conf/client/config_dashboard.json']
+                    )
 
             with tab_opt:
                 optimizer_name = st.selectbox("Select an Optimizer", 
@@ -216,8 +235,8 @@ with sidebar:
                 params = display_optimizer_params(optimizer_name, st.session_state.disable_run)
                 # Save configuration to a file
                 config['opt'] = {"optimizer": optimizer_name, "params": params}
-                with open(CONFIG_PATH, 'w') as config_file:
-                    json.dump(config, config_file, indent=4)
+                with open(CONFIG_PATH, 'w') as f:
+                    json.dump(config, f, indent=4)
 
             with tab_adv:
                 if "disabled" not in st.session_state:
@@ -229,12 +248,12 @@ with sidebar:
                                             disabled=st.session_state.disable_run
                 )
                 if is_option_features and os.path.exists(path_data):
-                    cols = get_feature_lst(path_data, config['label_keyword'])
+                    cols = get_feature_lst(path_data, config['data_kw']['label_keyword'])
                     features_drop = st.multiselect("Select which features to remove:", 
                                                    cols, placeholder='Choose a feature', 
                                                    disabled=st.session_state.disable_run)
                     drop_list = features_drop
-                    config['features_to_drop'] = drop_list
+                    config['data_kw']['features_to_drop'] = drop_list
 
                 elif is_option_features and not os.path.exists(path_data):
                     st.error("Please, insert a valid dataset path in the corresponding field of the **Basic** tab.", icon="🚨")
@@ -246,10 +265,20 @@ with sidebar:
                                   disabled=st.session_state.disable_run
                                   )
                 
+                is_override = st.toggle('Enable parameter override', 
+                                  help='Enables server to override the client training parameters', 
+                                  disabled=st.session_state.disable_run
+                                  )
+                
                 if is_resampling:
-                    config['resample_flag'] = True
+                    config['misc']['resample_flag'] = True
                 else:
-                    config['resample_flag'] = False
+                    config['misc']['resample_flag'] = False
+
+                if is_override:
+                    config['misc']['override_params'] = True
+                else:
+                    config['misc']['override_params'] = False
 
                 with open(CONFIG_PATH, 'w') as f:
                     json.dump(config, f, indent=4)
