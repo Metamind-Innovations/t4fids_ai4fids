@@ -6,6 +6,7 @@ import pandas as pd
 import subprocess
 import tensorflow as tf
 from pathlib import Path
+from constants import DEFAULT_DASH_CONF
 
 def wait_for_path(path, check_interval=0.2):
     while not os.path.exists(path):
@@ -64,6 +65,10 @@ OPTIMIZERS = {
 
 # load config
 CONFIG_PATH = 'conf/client/config_dashboard.json'
+if not os.path.exists(CONFIG_PATH):
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(DEFAULT_DASH_CONF, f, indent=4)
+
 config = load_config(CONFIG_PATH)
 
 # Set the page configuration
