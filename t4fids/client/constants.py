@@ -8,3 +8,9 @@ class TrainingArtifacts:
     model: tf.keras.Model
     label_encoder: LabelEncoder
     feature_scaler: StandardScaler
+
+@dataclass
+class TrainingParameters:
+    lr: float
+    batch_size: int
+    local_epochs: int

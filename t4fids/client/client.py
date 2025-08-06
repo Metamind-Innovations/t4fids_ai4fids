@@ -9,8 +9,10 @@ from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import time
 import joblib
-from .constants import TrainingArtifacts
+from .constants import TrainingArtifacts, TrainingParameters
 import json
+from typing import Union, Dict, List
+from pandas import DataFrame
 
 # Configure logging before other imports
 logger = logging.getLogger(__name__)
@@ -18,20 +20,22 @@ logger = logging.getLogger(__name__)
 class Client(fl.client.NumPyClient):
     '''FL Client core class'''
     def __init__(self, 
-                 train_data,
-                 test_data,
-                 features_to_drop:str,
-                 label_keyword: str,
-                 learning_rate: float,
-                 resample_flag: bool
+                 train_data: DataFrame,
+                 test_data: DataFrame,
+                 data_kw: Dict[str, Union[List[str], str]],
+                 tr_params: TrainingParameters,
+                 misc: Dict[str, bool]
         ):
 
         self.train_data = train_data
         self.test_data = test_data
-        self.features_to_drop = features_to_drop
-        self.label_keyword = label_keyword
-        self.lr = learning_rate
-        self.resample_flag = resample_flag
+        self.features_to_drop = data_kw['features_to_drop']
+        self.label_keyword = data_kw['label_keyword']
+        self.lr = tr_params.lr
+        self.batch_size = tr_params.batch_size
+        self.local_epochs = tr_params.local_epochs
+        self.resample_flag = misc['resample_flag']
+        self.is_override = misc['override_params']
 
         self._preprocess_data()
         self._initialize()
@@ -127,7 +131,9 @@ class Client(fl.client.NumPyClient):
     def fit(self, parameters, config):
         try:
             current_round = config['current_round']
-            self.epochs = config['local_epochs']
+            if self.is_override:
+                self.local_epochs = config['local_epochs']
+                self.batch_size = config['batch_size']
             self.model.set_weights(parameters)
 
             # training steps
@@ -135,8 +141,8 @@ class Client(fl.client.NumPyClient):
             self.model.fit(
                 self.X_train, 
                 self.y_train, 
-                epochs=self.epochs, 
-                batch_size=config['batch_size']
+                epochs=self.local_epochs, 
+                batch_size=self.batch_size
             )
             return self.model.get_weights(), len(self.y_train), {}
         except Exception as e:
@@ -216,6 +222,9 @@ class Client(fl.client.NumPyClient):
 
 class StreamlitClient(Client):
 
+    '''Client for streamlit dashboard. Only difference with default client is saving some tmp metrics
+    for the dashboard.
+    '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -260,13 +269,12 @@ class StreamlitClient(Client):
             logger.error(f"Evaluation failed: {str(e)}")
             raise
 
-def gen_client(data_path,
-               features_to_drop,
-               label_keyword,
-               lr=0.002,
-               resample_flag=False,
+def gen_client(data_path: str,
+               data_kw: Dict[str, Union[List[str], str]],
+               tr_params: TrainingParameters,
+               misc: Dict[str, bool],
                client_type = 'normal'
-               ):
+               ) -> Union[Client,StreamlitClient]:
     ''' Generate and return client instance'''
     try:
 
@@ -276,18 +284,16 @@ def gen_client(data_path,
         if client_type=='normal':
             client = Client(train_data,
                             test_data,
-                            features_to_drop,
-                            label_keyword,
-                            lr,
-                            resample_flag
+                            data_kw,
+                            tr_params,
+                            misc
                 )
         else:
             client = StreamlitClient(train_data,
                 test_data,
-                features_to_drop,
-                label_keyword,
-                lr,
-                resample_flag
+                data_kw,
+                tr_params,
+                misc
                 )
             
         logger.info('Client instance has been generated.')
