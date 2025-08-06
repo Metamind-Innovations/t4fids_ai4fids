@@ -13,6 +13,7 @@ from .constants import TrainingArtifacts, TrainingParameters
 import json
 from typing import Union, Dict, List
 from pandas import DataFrame
+import os
 
 # Configure logging before other imports
 logger = logging.getLogger(__name__)
@@ -185,6 +186,7 @@ class Client(fl.client.NumPyClient):
             suffix = 'v1'
 
         save_dir = Path(model_save_path)
+        os.makedirs(save_dir, exist_ok=True)
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         
         # Model
@@ -213,6 +215,7 @@ class Client(fl.client.NumPyClient):
 
         # Save to JSON file
         save_dir = Path(results_save_path)
+        os.makedirs(save_dir, exist_ok=True)
         save_path = save_dir / "metrics.json"
         with open(save_path, "w") as f:
             json.dump(data, f, indent=4)

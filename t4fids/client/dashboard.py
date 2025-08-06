@@ -136,6 +136,7 @@ with ins_tab:
 
 # Reset the acc.json
 TMP_SAVE_PATH = 'tmp/streamlit'
+os.makedirs(TMP_SAVE_PATH, exist_ok=True)
 ACC_FILE_PATH = Path(TMP_SAVE_PATH) / 'acc.json'
 METRICS_FILE_PATH = Path(TMP_SAVE_PATH) / 'metrics.json'
 AUX_FILE_PATH = Path(TMP_SAVE_PATH) / 'aux_config.json'
