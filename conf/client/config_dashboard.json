@@ -9,8 +9,8 @@
         "port": "8080"
     },
     "tr_params": {
-        "learning_rate": 0.002,
-        "batch_size": 32,
+        "learning_rate": 0.1,
+        "batch_size": 64,
         "local_epochs": 5
     },
     "data_kw": {
