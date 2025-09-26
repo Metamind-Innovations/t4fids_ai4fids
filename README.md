@@ -5,7 +5,7 @@ This repository contains T4FIDS, which performs real federated training that can
 
 1. Clone the repo:
     ```shell
-    git clone https://github.com/Metamind-Innovations/t4fids.git
+    git clone https://github.com/Metamind-Innovations/t4fids_ai4fids.git
     ```
 
 2. Create a Python environment (make sure the `python-venv` package is already installed):
